@@ -1,0 +1,122 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+typedef struct Node {
+    char data;
+    struct Node *left;
+    struct Node *right;
+} Node;
+
+typedef struct Stack {
+    Node **array;
+    int top;
+    int capacity;
+} Stack;
+
+// Function to create a stack
+Stack *createStack(int capacity) {
+    Stack *stack = (Stack *)malloc(sizeof(Stack));
+    stack->capacity = capacity;
+    stack->top = -1;
+    stack->array = (Node **)malloc(stack->capacity * sizeof(Node *));
+    return stack;
+}
+
+// Function to push an item onto the stack
+void push(Stack *stack, Node *item) {
+    stack->array[++stack->top] = item;
+}
+
+// Function to pop an item from the stack
+Node *pop(Stack *stack) {
+    return stack->array[stack->top--];
+}
+
+// Function to create a new node
+Node *createNode(char data) {
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    newNode->data = data;
+    newNode->left = NULL;
+    newNode->right = NULL;
+    return newNode;
+}
+
+// Function to check if a character is an operator
+int isOperator(char c) {
+    return c == '+' || c == '-' || c == '*' || c == '/';
+}
+
+// Function to get the precedence of an operator
+int getPrecedence(char c) {
+    if (c == '+' || c == '-')
+        return 1;
+    if (c == '*' || c == '/')
+        return 2;
+    return 0;
+}
+
+// Function to build the syntax tree from the expression
+Node *buildSyntaxTree(char *expression) {
+    Stack *operandStack = createStack(100);
+    Stack *operatorStack = createStack(100);
+
+    for (int i = 0; expression[i]; i++) {
+        if (isspace(expression[i])) {
+            continue;
+        } else if (isdigit(expression[i])) {
+            Node *operandNode = createNode(expression[i]);
+            push(operandStack, operandNode);
+        } else if (isOperator(expression[i])) {
+            while (operatorStack->top != -1 && getPrecedence(expression[i]) <= getPrecedence(operatorStack->array[operatorStack->top]->data)) {
+                Node *operatorNode = pop(operatorStack);
+                operatorNode->right = pop(operandStack);
+                operatorNode->left = pop(operandStack);
+                push(operandStack, operatorNode);
+            }
+            Node *newOperatorNode = createNode(expression[i]);
+            push(operatorStack, newOperatorNode);
+        }
+    }
+
+    while (operatorStack->top != -1) {
+        Node *operatorNode = pop(operatorStack);
+        operatorNode->right = pop(operandStack);
+        operatorNode->left = pop(operandStack);
+        push(operandStack, operatorNode);
+    }
+
+    Node *root = pop(operandStack);
+
+    // Free memory allocated for stacks
+    free(operandStack->array);
+    free(operandStack);
+    free(operatorStack->array);
+    free(operatorStack);
+
+    return root;
+}
+
+// Function to print the syntax tree
+void printSyntaxTree(Node *root, int level) {
+    if (root == NULL)
+        return;
+    printSyntaxTree(root->right, level + 1);
+    for (int i = 0; i < level; i++)
+        printf("   ");
+    printf("%c\n", root->data);
+    printSyntaxTree(root->left, level + 1);
+}
+
+int main() {
+    char expression[100];
+    printf("Enter the expression: ");
+    scanf("%[^\n]s", expression);
+
+    Node *root = buildSyntaxTree(expression);
+
+    printf("\nSyntax Tree for Expression: %s\n", expression);
+    printSyntaxTree(root, 0);
+
+    return 0;
+}

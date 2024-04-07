@@ -1,0 +1,158 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <string.h>
+
+// Define token types
+typedef enum {
+    ID,
+    STR,
+    FORMAT_SPECIFIER,
+    SEMICOLON,
+    LPAREN,
+    RPAREN,
+    COMMA,
+    SCANF,
+    PRINTF,
+    UNKNOWN
+} TokenType;
+
+// Define a token structure
+typedef struct {
+    TokenType type;
+    char lexeme[100];
+} Token;
+
+Token getNextToken();
+void parseStatement();
+
+int main() {
+    printf("Enter a printf or scanf statement:\n");
+    parseStatement();
+    return 0;
+}
+
+Token getNextToken() {
+    Token token;
+    char c = getchar();
+
+    // Skip whitespace
+    while (isspace(c)) {
+        c = getchar();
+    }
+
+    // Check for end of file
+    if (c == EOF) {
+        token.type = UNKNOWN;
+        return token;
+    }
+
+    // Check for identifiers
+    if (isalpha(c)) {
+        int i = 0;
+        token.lexeme[i++] = c;
+        c = getchar();
+        while (isalnum(c) || c == '_') {
+            token.lexeme[i++] = c;
+            c = getchar();
+        }
+        token.lexeme[i] = '\0';
+
+        // Check if it is printf or scanf
+        if (strcmp(token.lexeme, "printf") == 0) {
+            token.type = PRINTF;
+        } else if (strcmp(token.lexeme, "scanf") == 0) {
+            token.type = SCANF;
+        } else {
+            token.type = ID;
+        }
+
+        // Put back the last character read
+        ungetc(c, stdin);
+        return token;
+    }
+
+    // Check for string literals
+    if (c == '"') {
+        int i = 0;
+        token.lexeme[i++] = c;
+        c = getchar();
+        while (c != '"') {
+            token.lexeme[i++] = c;
+            c = getchar();
+        }
+        token.lexeme[i++] = c;
+        token.lexeme[i] = '\0';
+        token.type = STR;
+        return token;
+    }
+
+    // Check for format specifiers
+    if (c == '%' && getchar() == 'd') {
+        token.type = FORMAT_SPECIFIER;
+        strcpy(token.lexeme, "%d");
+        return token;
+    }
+
+    // Check for other tokens
+    switch (c) {
+        case ';':
+            token.type = SEMICOLON;
+            break;
+        case '(':
+            token.type = LPAREN;
+            break;
+        case ')':
+            token.type = RPAREN;
+            break;
+        case ',':
+            token.type = COMMA;
+            break;
+        default:
+            token.type = UNKNOWN;
+    }
+
+    return token;
+}
+
+void parseStatement() {
+    Token token = getNextToken();
+
+    // Check for printf or scanf
+    if (token.type != PRINTF && token.type != SCANF) {
+        printf("Error: Expecting printf or scanf\n");
+        exit(1);
+    }
+
+    printf("Syntax tree:\n");
+    printf("   %s\n", token.lexeme);
+
+    // Check for '('
+    token = getNextToken();
+    if (token.type != LPAREN) {
+        printf("Error: Expecting '('\n");
+        exit(1);
+    }
+
+    // Parse the arguments
+    token = getNextToken();
+    while (token.type != RPAREN) {
+        if (token.type == STR || token.type == ID || token.type == FORMAT_SPECIFIER) {
+            printf("      %s\n", token.lexeme);
+        } else if (token.type != COMMA) {
+            printf("Error: Expecting ','\n");
+            exit(1);
+        }
+        token = getNextToken();
+    }
+
+    // Check for ')'
+    token = getNextToken();
+    if (token.type != SEMICOLON) {
+        printf("Error: Expecting ';'\n");
+        exit(1);
+    }
+
+    printf("      ;\n");
+}

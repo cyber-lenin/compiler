@@ -1,0 +1,119 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef enum {
+    NODE_CONSTANT,
+    NODE_VARIABLE,
+    NODE_BINARY_OPERATION,
+    NODE_ASSIGNMENT
+} NodeType;
+
+typedef struct Node {
+    NodeType type;
+    char* value;
+    struct Node* left;
+    struct Node* right;
+} Node;
+
+Node* createNode(NodeType type, const char* value, Node* left, Node* right) {
+    Node* newNode = (Node*)malloc(sizeof(Node));
+    if (newNode == NULL) {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    newNode->type = type;
+    newNode->value = strdup(value); // Dynamic memory allocation for string
+    if (newNode->value == NULL) {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+    newNode->left = left;
+    newNode->right = right;
+    return newNode;
+}
+
+void generateIntermediateCode(Node* root) {
+    if (root == NULL) {
+        return;
+    }
+    switch (root->type) {
+        case NODE_CONSTANT:
+            printf("LOAD %s\n", root->value);
+            break;
+        case NODE_VARIABLE:
+            printf("READ %s\n", root->value);
+            break;
+        case NODE_BINARY_OPERATION:
+            generateIntermediateCode(root->left);
+            generateIntermediateCode(root->right);
+            printf("OP %s\n", root->value);
+            break;
+        case NODE_ASSIGNMENT:
+            generateIntermediateCode(root->right);
+            printf("STORE %s\n", root->left->value);
+            break;
+        default:
+            fprintf(stderr, "Unknown node type encountered\n");
+            exit(EXIT_FAILURE);
+    }
+}
+
+void freeTree(Node* root) {
+    if (root == NULL) {
+        return;
+    }
+    freeTree(root->left);
+    freeTree(root->right);
+    free(root->value); // Free dynamically allocated string
+    free(root);
+}
+
+int main() {
+    char variable[100];
+    char operator[100];
+    char constant1[100];
+    char constant2[100];
+
+    // Prompt user for input
+    printf("Enter variable: ");
+    if (scanf("%99s", variable) != 1) {
+        fprintf(stderr, "Invalid input\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Enter operator: ");
+    if (scanf("%99s", operator) != 1) {
+        fprintf(stderr, "Invalid input\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Enter first constant: ");
+    if (scanf("%99s", constant1) != 1) {
+        fprintf(stderr, "Invalid input\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Enter second constant: ");
+    if (scanf("%99s", constant2) != 1) {
+        fprintf(stderr, "Invalid input\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Construct syntax tree
+    Node* syntaxTree = createNode(NODE_ASSIGNMENT, variable, 
+                        createNode(NODE_VARIABLE, variable, NULL, NULL), 
+                        createNode(NODE_BINARY_OPERATION, operator, 
+                            createNode(NODE_CONSTANT, constant1, NULL, NULL), 
+                            createNode(NODE_CONSTANT, constant2, NULL, NULL)
+                        )
+                    );
+
+    // Generate intermediate code
+    generateIntermediateCode(syntaxTree);
+
+    // Free allocated memory
+    freeTree(syntaxTree);
+
+    return 0;
+}

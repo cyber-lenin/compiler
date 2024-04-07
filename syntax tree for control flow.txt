@@ -1,0 +1,152 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+
+#define MAX_EXPR_LEN 100
+
+typedef enum {
+    WHILE_LOOP,
+    FOR_LOOP,
+    IF_CONDITION,
+    ELSE_CONDITION
+} NodeType;
+
+typedef struct Node {
+    NodeType type;
+    char* condition;
+    struct Node* body;
+    struct Node* next;
+} Node;
+
+Node* parse_condition(const char* expr);
+Node* parse_next(const char* expr);
+void print_tree(Node* node, int indent);
+
+int main() {
+    char expr[MAX_EXPR_LEN];
+    printf("Enter control flow statement: ");
+    fgets(expr, MAX_EXPR_LEN, stdin);
+    expr[strcspn(expr, "\n")] = '\0'; // Remove newline character
+
+    Node* tree = parse_condition(expr);
+    print_tree(tree, 0);
+
+    return 0;
+}
+
+Node* parse_condition(const char* expr) {
+    Node* node = (Node*)malloc(sizeof(Node));
+    if (strncmp(expr, "if", 2) == 0) {
+        node->type = IF_CONDITION;
+        // Parse condition
+        int i = 2;
+        while (isspace(expr[i])) i++;
+        int start = i;
+        while (expr[i] && !isspace(expr[i]) && expr[i] != '{') i++;
+        node->condition = strndup(expr + start, i - start);
+        // Parse body
+        while (expr[i] && expr[i] != '{') i++;
+        if (expr[i] == '{') {
+            node->body = parse_next(expr + i + 1);
+        } else {
+            printf("Error: Invalid if statement\n");
+            exit(1);
+        }
+        node->next = NULL;
+    } else if (strncmp(expr, "else", 4) == 0) {
+        node->type = ELSE_CONDITION;
+        node->condition = NULL;
+        // Parse body
+        int i = 4;
+        while (isspace(expr[i])) i++;
+        while (expr[i] && expr[i] != '{') i++;
+        if (expr[i] == '{') {
+            node->body = parse_next(expr + i + 1);
+        } else {
+            printf("Error: Invalid else statement\n");
+            exit(1);
+        }
+        node->next = NULL;
+    } else if (strncmp(expr, "while", 5) == 0) {
+        node->type = WHILE_LOOP;
+        // Parse condition
+        int i = 5;
+        while (isspace(expr[i])) i++;
+        int start = i;
+        while (expr[i] && !isspace(expr[i]) && expr[i] != '{') i++;
+        node->condition = strndup(expr + start, i - start);
+        // Parse body
+        while (expr[i] && expr[i] != '{') i++;
+        if (expr[i] == '{') {
+            node->body = parse_next(expr + i + 1);
+        } else {
+            printf("Error: Invalid while loop\n");
+            exit(1);
+        }
+        node->next = NULL;
+    } else if (strncmp(expr, "for", 3) == 0) {
+        node->type = FOR_LOOP;
+        // Parse condition
+        int i = 3;
+        while (isspace(expr[i])) i++;
+        int start = i;
+        while (expr[i] && expr[i] != ';') i++;
+        node->condition = strndup(expr + start, i - start);
+        // Parse body
+        while (expr[i] && expr[i] != '{') i++;
+        if (expr[i] == '{') {
+            node->body = parse_next(expr + i + 1);
+        } else {
+            printf("Error: Invalid for loop\n");
+            exit(1);
+        }
+        node->next = NULL;
+    } else {
+        printf("Error: Unknown control flow statement\n");
+        exit(1);
+    }
+    return node;
+}
+
+Node* parse_next(const char* expr) {
+    // Parse next control flow statement recursively
+    Node* node = NULL;
+    if (expr[0] != '\0') {
+        node = parse_condition(expr);
+    }
+    return node;
+}
+
+void print_tree(Node* node, int indent) {
+    if (node == NULL) return;
+    for (int i = 0; i < indent; i++) printf(" ");
+    switch (node->type) {
+        case WHILE_LOOP:
+            printf("WHILE_LOOP\n");
+            break;
+        case FOR_LOOP:
+            printf("FOR_LOOP\n");
+            break;
+        case IF_CONDITION:
+            printf("IF_CONDITION\n");
+            break;
+        case ELSE_CONDITION:
+            printf("ELSE_CONDITION\n");
+            break;
+    }
+    if (node->condition != NULL) {
+        for (int i = 0; i < indent + 4; i++) printf(" ");
+        printf("Condition: %s\n", node->condition);
+    }
+    if (node->body != NULL) {
+        for (int i = 0; i < indent + 4; i++) printf(" ");
+        printf("Body:\n");
+        print_tree(node->body, indent + 4);
+    }
+    if (node->next != NULL) {
+        for (int i = 0; i < indent; i++) printf(" ");
+        printf("Next:\n");
+        print_tree(node->next, indent);
+    }
+}
